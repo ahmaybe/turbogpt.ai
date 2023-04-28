@@ -46,6 +46,19 @@ export const getSelectedConversation = createSelector(
   [(state: RootState) => state.chatOptions || initialState],
   options => options.selectedConversation,
 );
+export const getSelectedConversationTitle = createSelector(
+  [(state: RootState) => state.chatOptions || initialState],
+  options => {
+    if (options.currentFork !== -1) {
+      // @ts-ignore
+      return options.conversations[options.selectedConversation].subConvos[
+        options.currentFork
+      ].title;
+    }
+
+    return options.conversations[options.selectedConversation].title;
+  },
+);
 export const getModel = createSelector(
   [(state: RootState) => state.chatOptions || initialState],
   options => options.model,
@@ -57,4 +70,8 @@ export const getCustomPrompt = createSelector(
 export const getUserCreatedPrompts = createSelector(
   [(state: RootState) => state.chatOptions || initialState],
   options => options.userCreatedPrompts,
+);
+export const getCurrentFork = createSelector(
+  [(state: RootState) => state.chatOptions || initialState],
+  options => options.currentFork,
 );

@@ -57,7 +57,7 @@ function CreatePrompt({
           mr="sm"
           onClick={() => handleCreatePrompt()}
           variant="filled"
-          color="red"
+          color="blue"
           fullWidth
           mt="md"
           radius="md"

@@ -1,4 +1,4 @@
-import { PayloadAction } from '@reduxjs/toolkit';
+import { PayloadAction, current } from '@reduxjs/toolkit';
 import { ApiModel, CustomPrompt } from './types';
 import { createSlice } from 'utils/@reduxjs/toolkit';
 import { useInjectReducer, useInjectSaga } from 'utils/redux-injectors';
@@ -31,7 +31,9 @@ export const initialState: ChatOptionsState = {
   generateName: getCustomUser() === 'true' || false,
   verifyingApiKey: false,
   messages: getMessagesInLocalStorage() || [],
-  conversations: getConversationsFromStorage() || [],
+  conversations: getConversationsFromStorage() || [
+    { title: '', messages: [], subConvos: [] },
+  ],
   selectedConversation: 0,
   model: getModelFromStorage() || 'gpt-3.5-turbo',
   customPrompt: getSelectedPrompt() || {
@@ -39,6 +41,7 @@ export const initialState: ChatOptionsState = {
     act: '',
   },
   userCreatedPrompts: getCustomUserPrompts() || [],
+  currentFork: -1,
 };
 
 const slice = createSlice({
@@ -75,9 +78,17 @@ const slice = createSlice({
       state.verifyingApiKey = action.payload;
     },
     setMessages(state, action: PayloadAction<any>) {
-      state.messages = action.payload;
+      const currentFork = state.currentFork;
       const currentConvo = state.selectedConversation;
-      state.conversations[currentConvo] = action.payload;
+      console.log(action.payload);
+      if (currentFork !== -1) {
+        // @ts-ignore
+        state.conversations[currentConvo].subConvos[currentFork].messages =
+          action.payload;
+      } else {
+        state.conversations[currentConvo].messages = action.payload;
+      }
+      state.messages = action.payload;
       saveConversationsToStorage(state.conversations);
     },
     updateLastMesssage(state, action: PayloadAction<string>) {
@@ -86,7 +97,14 @@ const slice = createSlice({
     },
     finalizeLastMessage(state) {
       const currentConvo = state.selectedConversation;
-      state.conversations[currentConvo] = state.messages;
+      const currentFork = state.currentFork;
+      if (currentFork !== -1) {
+        // @ts-ignore
+        state.conversations[currentConvo].subConvos[currentFork].messages =
+          state.messages;
+      } else {
+        state.conversations[currentConvo].messages = state.messages;
+      }
       saveConversationsToStorage(state.conversations);
     },
     addConversation(state, action: PayloadAction<any>) {
@@ -98,16 +116,28 @@ const slice = createSlice({
     removeConversation(state, action: PayloadAction<number>) {
       state.conversations.splice(action.payload, 1);
       state.selectedConversation = 0;
-      if (state.conversations[0].length) {
-        state.messages = state.conversations[0];
+      if (state.conversations[0].messages.length) {
+        state.messages = state.conversations[0].messages;
       } else {
         state.messages = [];
       }
       saveConversationsToStorage(state.conversations);
     },
+    setConvoTitle(state, action: PayloadAction<any>) {
+      const selectedFork = state.currentFork;
+      const currentConvo = state.selectedConversation;
+      if (selectedFork) {
+        // @ts-ignore
+        state.conversations[currentConvo].subConvos[selectedFork].title =
+          action.payload;
+      } else {
+        state.conversations[currentConvo].title = action.payload;
+      }
+      saveConversationsToStorage(state.conversations);
+    },
     setSelectedConversation(state, action: PayloadAction<number>) {
       state.selectedConversation = action.payload;
-      state.messages = state.conversations[action.payload];
+      state.messages = state.conversations[action.payload].messages;
     },
     setModel(state, action: PayloadAction<ApiModel>) {
       state.model = action.payload;
@@ -131,6 +161,63 @@ const slice = createSlice({
       state.userCreatedPrompts.splice(index, 1);
       saveCustomUserPrompts(state.userCreatedPrompts);
     },
+    addConvoFork(state, action: PayloadAction<any>) {
+      const currentConvo = state.selectedConversation;
+      state.conversations[currentConvo].subConvos?.push({
+        messages: state.conversations[currentConvo].messages,
+        title: `Unnamed Fork`,
+      });
+      saveConversationsToStorage(state.conversations);
+    },
+    setCurrentFork(state, action: PayloadAction<any>) {
+      if (state.currentFork === action.payload) return;
+      const currentConvo = state.selectedConversation;
+      if (action.payload === -1) {
+        state.currentFork = -1;
+      } else {
+        state.currentFork = action.payload;
+        if (state.conversations[currentConvo].subConvos?.length) {
+          state.messages =
+            // @ts-ignore
+            state.conversations[currentConvo].subConvos[
+              action.payload
+            ].messages;
+        }
+      }
+      saveConversationsToStorage(state.conversations);
+    },
+    removeConvoFork(state, action: PayloadAction<any>) {
+      const currentConvo = state.selectedConversation;
+      const forkIndex = action.payload;
+      state.conversations[currentConvo].subConvos?.splice(forkIndex, 1);
+      saveConversationsToStorage(state.conversations);
+    },
+    setForkTitle(state, action: PayloadAction<any>) {
+      const currentConvo = state.selectedConversation;
+      const forkIndex = state.currentFork;
+      // @ts-ignore
+      state.conversations[currentConvo].subConvos[forkIndex].title =
+        action.payload;
+      saveConversationsToStorage(state.conversations);
+    },
+    // setConvoForkTitle(state, action: PayloadAction<any>) {
+    //   const currentConvo = state.selectedConversation;
+    //   const index = state.conversations[currentConvo].subConvos?.findIndex(
+    //     convo => convo.title === action.payload.title,
+    //   );
+    //   state.conversations[currentConvo].subConvos[index].title =
+    //     action.payload.newTitle;
+    //   saveConversationsToStorage(state.conversations);
+    // },
+    // setConvoForkMessages(state, action: PayloadAction<any>) {
+    //   const currentConvo = state.selectedConversation;
+    //   const index = state.conversations[currentConvo].subConvos.findIndex(
+    //     convo => convo.title === action.payload.title,
+    //   );
+    //   state.conversations[currentConvo].subConvos[index].messages =
+    //     action.payload.messages;
+    //   saveConversationsToStorage(state.conversations);
+    // },
   },
 });
 

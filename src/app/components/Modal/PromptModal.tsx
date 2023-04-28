@@ -83,7 +83,7 @@ function PromptModal() {
             size={isMobile ? 'sm' : 'md'}
             onChange={handleTabChange}
             value={selectedTab.toString()}
-            color="red"
+            color="blue"
             variant="filled"
             data={[
               { label: isMobile ? 'Default' : 'All prompts', value: '0' },

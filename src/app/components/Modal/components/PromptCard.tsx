@@ -76,7 +76,7 @@ function PromptCard({
               handleSelectPrompt({ act: title, prompt: description })
             }
             variant={active ? 'gradient' : 'light'}
-            color="red"
+            color="blue"
             fullWidth
             mt="md"
             radius="md"
